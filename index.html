@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jepret — Generator Prompt Foto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBF8FF;
+    --panel:#FFFFFF;
+    --panel-alt:#F5F1FC;
+    --border:#DCD2F2;
+    --border-soft:#EAE3F7;
+    --text:#251B38;
+    --muted:#6F6591;
+    --blue:#8B3DFF;
+    --blue-dim:#C9AEFF;
+    --grad-start:#FF4D8D;
+    --grad-end:#FF9142;
+    --purple:#8B3DFF;
+    --purple-hover:#7A2FEF;
+    --danger:#D63E63;
+    --warn:#B9720A;
+  }
+  :root:not([data-theme="light"]){ color-scheme: light; }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(55% 45% at 12% -8%, rgba(255,77,141,0.14) 0%, transparent 60%),
+      radial-gradient(50% 42% at 105% 0%, rgba(139,61,255,0.13) 0%, transparent 60%),
+      radial-gradient(48% 38% at 50% 112%, rgba(255,145,66,0.12) 0%, transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font-family:'Inter', system-ui, -apple-system, sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit;}
+  ::selection{background:var(--purple); color:#fff;}
+  a.skip{position:absolute;left:-9999px;}
+  a.skip:focus{left:8px;top:8px;background:var(--purple);color:#fff;padding:8px 12px;border-radius:6px;z-index:999;}
+
+  /* ---------- Login ---------- */
+  #loginScreen{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+  .login-card{ width:100%; max-width:420px; background:var(--panel); border:1px solid var(--border); border-radius:16px; padding:36px 32px; display:flex; flex-direction:column; gap:20px; box-shadow:0 30px 60px -30px rgba(139,61,255,0.25); }
+  .login-card h1{ font-size:22px; margin:0 0 2px; }
+  .login-card .sub{ color:var(--muted); font-size:13.5px; margin:0; line-height:1.55; }
+  .field{display:flex;flex-direction:column;gap:6px;}
+  .field label{font-size:12.5px;color:var(--muted);}
+  .field input{ background:var(--panel-alt); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:11px 13px; font-size:14px; outline:none; transition:border-color .15s ease; }
+  .field input:focus{border-color:var(--blue);}
+  .btn-primary{ background:linear-gradient(135deg, var(--grad-start), var(--grad-end)); color:#fff; border:none; border-radius:8px; padding:12px 18px; font-size:14.5px; font-weight:600; cursor:pointer; }
+  .btn-primary:hover{ filter:brightness(1.06); }
+  .login-error{ font-size:12.5px; color:var(--danger); display:none; }
+  .login-note{ font-size:12px; color:var(--muted); border-top:1px solid var(--border); padding-top:14px; line-height:1.6; }
+
+  /* ---------- App shell ---------- */
+  #appScreen{display:none; min-height:100vh;}
+  .topbar{ display:flex; align-items:center; justify-content:space-between; padding:14px 24px; border-bottom:1px solid var(--border-soft); }
+  .brand{ display:flex; align-items:center; gap:8px; font-weight:700; font-size:15px; }
+  .brand .dot{ width:9px;height:9px;border-radius:50%; background:linear-gradient(135deg, var(--grad-start), var(--grad-end)); box-shadow:0 0 0 3px rgba(139,61,255,0.15); }
+  .who{display:flex;align-items:center;gap:12px;font-size:12.5px;color:var(--muted);}
+  .who button{ background:transparent; border:1px solid var(--border); color:var(--text); border-radius:6px; padding:6px 11px; font-size:12.5px; cursor:pointer; }
+  .who button:hover{border-color:var(--blue);}
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:26px 24px 70px; display:flex; flex-direction:column; gap:22px; }
+
+  h2{font-size:16px;margin:0 0 16px;font-weight:700;}
+  h3.cat-title{ font-size:13px; font-weight:700; color:var(--blue); margin:18px 0 8px; text-transform:uppercase; letter-spacing:.03em; }
+  h3.cat-title:first-child{margin-top:0;}
+
+  /* ---------- Top command bar ---------- */
+  .command-row{ display:flex; gap:12px; }
+  .command-input{
+    flex:1; background:var(--panel); border:1px solid var(--border); color:var(--text);
+    border-radius:10px; padding:14px 16px; font-size:14.5px; outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  .command-input::placeholder{color:var(--muted);}
+  .command-input:focus{ border-color:var(--blue); box-shadow:0 0 0 3px rgba(139,61,255,0.14); }
+  .btn-generate-top{
+    background:linear-gradient(135deg, var(--grad-start), var(--grad-end)); color:#fff; border:none;
+    border-radius:10px; padding:0 22px; font-size:14.5px; font-weight:600; cursor:pointer;
+    display:flex; align-items:center; gap:8px; white-space:nowrap;
+  }
+  .btn-generate-top:hover:not(:disabled){filter:brightness(1.06);}
+  .btn-generate-top:disabled{opacity:.4; cursor:not-allowed;}
+  .spinner{ width:13px;height:13px; border-radius:50%; border:2px solid rgba(255,255,255,0.35); border-top-color:#fff; animation:spin .7s linear infinite; display:none; }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ---------- Main grid ---------- */
+  .main-grid{ display:grid; grid-template-columns:400px 1fr; gap:22px; align-items:start; }
+  @media (max-width:880px){ .main-grid{grid-template-columns:1fr;} }
+  .section-card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:22px; }
+
+  /* image mode toggle */
+  .segmented{ display:flex; background:var(--panel-alt); border:1px solid var(--border); border-radius:9px; padding:3px; gap:2px; margin-bottom:16px; }
+  .segmented button{ flex:1; background:transparent; border:none; color:var(--muted); padding:9px 10px; border-radius:7px; font-size:13px; cursor:pointer; font-weight:600; }
+  .segmented button.active{ background:linear-gradient(135deg, var(--grad-start), var(--grad-end)); color:#fff; }
+
+  .upload-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:520px){ .upload-grid{grid-template-columns:1fr;} }
+  .upload-box{
+    border:1.5px dashed var(--border); border-radius:12px; min-height:150px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; gap:4px; cursor:pointer; position:relative; padding:16px;
+    transition:border-color .15s ease, background .15s ease; overflow:hidden;
+  }
+  .upload-box:hover, .upload-box.drag{ border-color:var(--blue); background:#F8F3FF; }
+  .upload-box input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .upload-box .up-title{ font-size:13.5px; font-weight:600; color:var(--text); }
+  .upload-box .up-sub{ font-size:11.5px; color:var(--muted); }
+  .upload-box.filled{ padding:0; border-style:solid; }
+  .upload-box.filled img{ width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
+  .remove-btn{
+    position:absolute; top:8px; right:8px; z-index:2;
+    background:rgba(37,27,56,0.7); color:#fff; border:1px solid rgba(255,255,255,0.25);
+    border-radius:100px; width:24px; height:24px; font-size:13px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .file-label{
+    position:absolute; bottom:0; left:0; right:0; z-index:1;
+    background:linear-gradient(0deg, rgba(37,27,56,0.85), transparent);
+    color:#fff; font-size:11px; padding:16px 10px 6px; text-align:left;
+  }
+
+  .multi-dropzone{
+    border:1.5px dashed var(--border); border-radius:12px; padding:22px 16px; text-align:center;
+    cursor:pointer; position:relative; transition:border-color .15s ease, background .15s ease;
+  }
+  .multi-dropzone:hover, .multi-dropzone.drag{ border-color:var(--blue); background:#F8F3FF; }
+  .multi-dropzone input{ position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .multi-thumbs{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; }
+  .multi-thumb{ width:88px; height:88px; border-radius:9px; overflow:hidden; position:relative; border:1px solid var(--border); }
+  .multi-thumb img{ width:100%; height:100%; object-fit:cover; }
+  .multi-thumb .remove-btn{ width:20px; height:20px; font-size:11px; top:5px; right:5px; }
+  .multi-thumb .idx-tag{ position:absolute; bottom:4px; left:4px; background:rgba(37,27,56,0.7); color:#fff; font-size:9.5px; padding:2px 6px; border-radius:100px; }
+
+  .status-box{
+    margin-top:14px; background:var(--panel-alt); border:1px solid var(--border); border-radius:10px;
+    padding:14px 16px; font-size:13px; color:var(--muted); min-height:52px;
+    display:flex; flex-direction:column; justify-content:center; gap:4px;
+  }
+  .status-box.recognized .s-name{ color:var(--blue); font-weight:700; font-size:13.5px; }
+  .status-box.recognized .s-desc{ color:var(--text); }
+  .status-box .s-warn{ color:var(--warn); font-size:12px; }
+
+  /* ---------- Categorized shortcut grid ---------- */
+  .populer-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .populer-cell{ padding:12px 14px; border-right:1px solid var(--border-soft); border-bottom:1px solid var(--border-soft); cursor:pointer; transition:background .12s ease; display:flex; gap:11px; align-items:flex-start; }
+  .populer-cell:hover{ background:#F8F3FF; }
+  .p-swatch{ flex-shrink:0; width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .populer-cell .p-name{ color:var(--blue); font-weight:700; font-size:13px; margin-bottom:3px; }
+  .populer-cell .p-desc{ color:var(--muted); font-size:12px; line-height:1.5; }
+
+  .result-box{
+    margin-top:16px; background:var(--panel-alt); border:1px solid var(--border); border-radius:12px;
+    min-height:220px; display:flex; align-items:center; justify-content:center; text-align:center;
+    color:var(--muted); font-size:13px; position:relative; overflow:hidden; flex-direction:column; gap:8px;
+  }
+  .result-box img{ width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
+  .result-caption{ position:absolute; bottom:0; left:0; right:0; z-index:2; background:linear-gradient(0deg, rgba(37,27,56,0.92), transparent); padding:28px 14px 12px; text-align:left; }
+  .result-caption .r-name{ color:#F3C9FF; font-weight:700; font-size:12.5px; }
+  .result-caption .r-desc{ color:#fff; font-size:11.5px; margin-top:2px; }
+  .result-ref-badge{ position:absolute; top:10px; right:10px; z-index:3; width:46px; height:46px; border-radius:8px; overflow:hidden; border:1.5px solid rgba(255,255,255,0.6); box-shadow:0 6px 16px rgba(0,0,0,0.25); }
+  .result-ref-badge img{ position:static; }
+  .sim-badge{ position:absolute; top:10px; left:10px; z-index:3; font-size:10.5px; color:#fff; background:rgba(139,61,255,0.55); border:1px solid rgba(139,61,255,0.7); padding:4px 9px; border-radius:100px; }
+
+  .fx-premium{filter:saturate(1.1) contrast(1.2) brightness(1.03);}
+  .fx-rustic{filter:sepia(0.28) saturate(1.1) contrast(1.05);}
+  .fx-hyperreal{filter:saturate(1.4) contrast(1.25) brightness(1.03);}
+  .fx-natural{filter:saturate(1) contrast(1.02) brightness(1.02);}
+  .fx-warm{filter:saturate(1.25) sepia(0.12) brightness(1.05) contrast(1.08);}
+  .fx-cinematic{filter:saturate(0.9) contrast(1.28) brightness(0.9);}
+  .fx-minimal{filter:saturate(0.55) contrast(1.02) brightness(1.12);}
+
+  /* ---------- Example results section ---------- */
+  .examples-head{ display:flex; flex-direction:column; gap:4px; margin-bottom:4px; }
+  .examples-head p{ margin:0; color:var(--muted); font-size:13px; }
+  .examples-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:16px; margin-top:16px; }
+  .example-card{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:16px; }
+  .example-compare{ display:flex; align-items:center; gap:8px; }
+  .example-box{ flex:1; aspect-ratio:1/1; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px; font-size:11px; font-weight:600; }
+  .example-box .ico{ font-size:24px; }
+  .example-box.before{ background:var(--panel-alt); border:1px dashed var(--border); color:var(--muted); }
+  .example-arrow{ color:var(--blue); font-size:16px; flex-shrink:0; }
+  .example-label{ margin-top:12px; font-weight:700; font-size:13.5px; color:var(--text); }
+  .example-desc{ font-size:12px; color:var(--muted); margin-top:2px; line-height:1.5; }
+
+  .ex-after-outfittransfer{ background:linear-gradient(135deg,#FFD1E8,#FFB199); color:#5C1F3E; }
+  .ex-after-hero{ background:linear-gradient(135deg,#2B2140,#6B3FA0); color:#fff; }
+  .ex-after-ingredientstory{ background:linear-gradient(135deg,#F4E3C1,#C98A4B); color:#4A3110; }
+  .ex-after-flatlay{ background:linear-gradient(135deg,#E4E4F7,#B9B9E8); color:#332B5C; }
+
+  .swatch-fx-premium{ background:linear-gradient(135deg,#D8C4FF,#8B3DFF); }
+  .swatch-fx-rustic{ background:linear-gradient(135deg,#F4E3C1,#C98A4B); }
+  .swatch-fx-hyperreal{ background:linear-gradient(135deg,#FFD1E8,#FF4D8D); }
+  .swatch-fx-natural{ background:linear-gradient(135deg,#DFF3E3,#8FD9A8); }
+  .swatch-fx-warm{ background:linear-gradient(135deg,#FFE1B8,#FF9142); }
+  .swatch-fx-cinematic{ background:linear-gradient(135deg,#2B2140,#6B3FA0); }
+  .swatch-fx-minimal{ background:linear-gradient(135deg,#F0F0F7,#C9C9E0); }
+</style>
+</head>
+<body>
+<a href="#main" class="skip">Lewati ke konten</a>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div>
+      <h1>Masuk ke Jepret</h1>
+      <p class="sub">Pilih shortcut, unggah foto, dan dapatkan hasil generate. Akses saat ini masih tahap simulasi.</p>
+    </div>
+    <form id="loginForm" style="display:flex; flex-direction:column; gap:16px;">
+      <div class="field">
+        <label for="username">Nama / email</label>
+        <input id="username" type="text" placeholder="mis. warungkopi.ratna" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="password">Kata sandi</label>
+        <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" required>
+      </div>
+      <p class="login-error" id="loginError">Isi nama dan kata sandi terlebih dahulu.</p>
+      <button type="submit" class="btn-primary">Masuk</button>
+    </form>
+    <p class="login-note">Ini prototipe: login belum terhubung ke sistem akun sungguhan — isi apa saja untuk masuk. Nantinya hanya pengguna terdaftar yang bisa mengakses.</p>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="appScreen">
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span> Jepret</div>
+    <div class="who">
+      <span id="whoLabel"></span>
+      <button id="logoutBtn" type="button">Keluar</button>
+    </div>
+  </div>
+
+  <div class="wrap" id="main">
+
+    <!-- Command bar -->
+    <div class="command-row">
+      <input type="text" id="commandInput" class="command-input" placeholder="Contoh: outfittransfer">
+      <button class="btn-generate-top" id="generateBtn" disabled>
+        <span class="spinner" id="spinner"></span>
+        <span id="generateLabel">+ Generate</span>
+      </button>
+    </div>
+
+    <!-- Main grid -->
+    <div class="main-grid">
+      <!-- LEFT: input gambar + hasil -->
+      <div>
+        <div class="section-card">
+          <h2>Input gambar</h2>
+
+          <div class="segmented" id="imageModeToggle">
+            <button type="button" data-imgmode="single" class="active">Single Gambar</button>
+            <button type="button" data-imgmode="multi">Banyak Gambar</button>
+          </div>
+
+          <!-- SINGLE mode -->
+          <div id="singleWrap">
+            <div class="upload-box" id="uploadBoxSingle">
+              <input type="file" id="fileInputSingle" accept="image/*">
+              <div class="up-title">+ Upload Foto</div>
+              <div class="up-sub">Model / produk / scene</div>
+            </div>
+          </div>
+
+          <!-- MULTI mode -->
+          <div id="multiWrap" style="display:none;">
+            <div class="multi-dropzone" id="multiDropzone">
+              <input type="file" id="fileInputMulti" accept="image/*" multiple>
+              <div class="up-title">+ Upload beberapa foto</div>
+              <div class="up-sub">Mis. foto orang + foto pakaian, atau beberapa referensi produk</div>
+            </div>
+            <div class="multi-thumbs" id="multiThumbs"></div>
+          </div>
+
+          <div class="status-box" id="statusBox">Shortcut belum terdaftar.</div>
+        </div>
+
+        <div class="section-card" style="margin-top:20px;">
+          <h2>Hasil generate</h2>
+          <div class="result-box" id="resultBox">Hasil gambar akan muncul di sini.</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: shortcut per kategori -->
+      <div class="section-card">
+        <h2>Shortcut per kategori</h2>
+        <div id="categoryList"></div>
+      </div>
+    </div>
+
+    <!-- Example results -->
+    <div class="section-card">
+      <div class="examples-head">
+        <h2 style="margin-bottom:0;">Contoh hasil generate</h2>
+        <p>Ilustrasi gambaran perubahan gaya — bukan hasil sungguhan, hanya untuk memberi gambaran arah visual tiap shortcut.</p>
+      </div>
+      <div class="examples-grid" id="examplesGrid"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ============ DATA — shortcut per kategori (dari cheat sheet Excel, tanpa kategori Video & Camera) ============
+  var CATEGORY_ORDER = ["Transformasi","Foto","Style","Retention","Affiliate","Food"];
+  var SHORTCUTS = [
+    // Transformasi
+    {cmd:"outfittransfer", name:"Outfit Transfer", desc:"Pakaian Foto 2 dikenakan orang Foto 1.", cat:"Transformasi", fx:"fx-premium", needsMulti:true},
+    {cmd:"producttransfer", name:"Product Transfer", desc:"Objek/produk gambar 2 ditempatkan pada scene gambar 1.", cat:"Transformasi", fx:"fx-premium", needsMulti:true},
+    {cmd:"backgroundtransfer", name:"Background Transfer", desc:"Background gambar 2 diterapkan ke subjek gambar 1.", cat:"Transformasi", fx:"fx-cinematic", needsMulti:true},
+    {cmd:"styletransfer", name:"Style Transfer", desc:"Gaya visual gambar 2 diterapkan ke gambar 1.", cat:"Transformasi", fx:"fx-hyperreal", needsMulti:true},
+    {cmd:"hairtransfer", name:"Hair Transfer", desc:"Gaya/rambut gambar 2 diterapkan ke orang gambar 1.", cat:"Transformasi", fx:"fx-natural", needsMulti:true},
+    {cmd:"proptransfer", name:"Prop Transfer", desc:"Aksesori/props gambar 2 ditambahkan ke gambar 1.", cat:"Transformasi", fx:"fx-premium", needsMulti:true},
+    {cmd:"materialtransfer", name:"Material Transfer", desc:"Material/tekstur gambar 2 diterapkan ke objek gambar 1.", cat:"Transformasi", fx:"fx-rustic", needsMulti:true},
+    {cmd:"colortransfer", name:"Color Transfer", desc:"Warna/nuansa gambar 2 diterapkan ke gambar 1.", cat:"Transformasi", fx:"fx-warm", needsMulti:true},
+    {cmd:"productreplace", name:"Product Replace", desc:"Produk pada gambar 1 diganti dengan produk gambar 2.", cat:"Transformasi", fx:"fx-premium", needsMulti:true},
+    {cmd:"scenecombine", name:"Scene Combine", desc:"Menggabungkan subjek gambar 1 dengan objek/scene gambar 2.", cat:"Transformasi", fx:"fx-cinematic", needsMulti:true},
+    {cmd:"lightingtransfer", name:"Lighting Transfer", desc:"Pencahayaan gambar 2 diterapkan ke gambar 1.", cat:"Transformasi", fx:"fx-cinematic", needsMulti:true},
+    {cmd:"posetransfer", name:"Pose Transfer", desc:"Pose orang gambar 2 diterapkan ke orang gambar 1.", cat:"Transformasi", fx:"fx-natural", needsMulti:true},
+    {cmd:"patterntransfer", name:"Pattern Transfer", desc:"Motif/pola gambar 2 diterapkan ke objek gambar 1.", cat:"Transformasi", fx:"fx-rustic", needsMulti:true},
+    {cmd:"logotransfer", name:"Logo Transfer", desc:"Logo/branding gambar 2 ditambahkan ke gambar 1.", cat:"Transformasi", fx:"fx-premium", needsMulti:true},
+
+    // Foto
+    {cmd:"productphoto", name:"Foto Produk Utama", desc:"Produk sebagai fokus utama.", cat:"Foto", fx:"fx-premium"},
+    {cmd:"heroimage", name:"Hero Image", desc:"Foto produk paling menonjol.", cat:"Foto", fx:"fx-hyperreal"},
+    {cmd:"foodphoto", name:"Food Photography", desc:"Foto makanan yang menggugah selera.", cat:"Foto", fx:"fx-warm"},
+    {cmd:"indonesianfood", name:"Indonesian Food", desc:"Nuansa visual makanan Indonesia.", cat:"Foto", fx:"fx-warm"},
+    {cmd:"lifestyleshot", name:"Lifestyle Shot", desc:"Produk dalam situasi penggunaan nyata.", cat:"Foto", fx:"fx-warm"},
+    {cmd:"commercialphoto", name:"Commercial Photo", desc:"Gaya foto iklan profesional.", cat:"Foto", fx:"fx-cinematic"},
+    {cmd:"45degree", name:"45 Degree", desc:"Sudut kamera sekitar 45 derajat.", cat:"Foto", fx:"fx-natural"},
+    {cmd:"topdown", name:"Top-down", desc:"Kamera dari atas.", cat:"Foto", fx:"fx-minimal"},
+    {cmd:"macro", name:"Macro", desc:"Detail tekstur sangat dekat.", cat:"Foto", fx:"fx-natural"},
+    {cmd:"closeup", name:"Close-up", desc:"Detail produk dari jarak dekat.", cat:"Foto", fx:"fx-natural"},
+    {cmd:"productdetail", name:"Product Detail", desc:"Menonjolkan detail produk.", cat:"Foto", fx:"fx-premium"},
+    {cmd:"steam", name:"Steam", desc:"Uap makanan realistis.", cat:"Foto", fx:"fx-warm"},
+    {cmd:"moody", name:"Moody", desc:"Pencahayaan dramatis dan atmosferik.", cat:"Foto", fx:"fx-cinematic"},
+    {cmd:"premium", name:"Premium", desc:"Tampilan polished dan premium.", cat:"Foto", fx:"fx-premium"},
+    {cmd:"minimal", name:"Minimal", desc:"Komposisi bersih dan sederhana.", cat:"Foto", fx:"fx-minimal"},
+    {cmd:"rustic", name:"Rustic", desc:"Nuansa natural/kayu.", cat:"Foto", fx:"fx-rustic"},
+    {cmd:"faceless", name:"Faceless", desc:"Orang tanpa wajah terlihat.", cat:"Foto", fx:"fx-natural"},
+    {cmd:"ugcadd", name:"UGC Add", desc:"Produk dipegang tangan orang seperti akan di-review.", cat:"Foto", fx:"fx-natural"},
+    {cmd:"birdview", name:"Bird View", desc:"Sudut pandang dari atas, lebih tinggi dari top-down.", cat:"Foto", fx:"fx-minimal"},
+    {cmd:"lowangle", name:"Low Angle", desc:"Sudut kamera dari bawah, kesan produk lebih megah.", cat:"Foto", fx:"fx-hyperreal"},
+    {cmd:"symmetry", name:"Symmetry", desc:"Komposisi simetris dan seimbang.", cat:"Foto", fx:"fx-minimal"},
+    {cmd:"negativespace", name:"Negative Space", desc:"Banyak ruang kosong di sekitar produk, kesan elegan.", cat:"Foto", fx:"fx-minimal"},
+    {cmd:"texturefocus", name:"Texture Focus", desc:"Menonjolkan tekstur permukaan produk.", cat:"Foto", fx:"fx-natural"},
+    {cmd:"catalog", name:"Catalog", desc:"Foto katalog bersih.", cat:"Foto", fx:"fx-minimal"},
+    {cmd:"flatlay", name:"Flatlay", desc:"Komposisi dari atas.", cat:"Foto", fx:"fx-minimal"},
+
+    // Style
+    {cmd:"hyperreal", name:"Hyperreal", desc:"Fotorealistik/hyperrealistic.", cat:"Style", fx:"fx-hyperreal"},
+    {cmd:"cinematic", name:"Cinematic", desc:"Nuansa film dengan depth dan lighting sinematik.", cat:"Style", fx:"fx-cinematic"},
+    {cmd:"ugc", name:"UGC", desc:"Gaya konten pengguna yang natural.", cat:"Style", fx:"fx-natural"},
+    {cmd:"natural", name:"Natural", desc:"Tampilan spontan dan tidak terlalu terasa iklan.", cat:"Style", fx:"fx-natural"},
+    {cmd:"indonesian", name:"Indonesian", desc:"Atmosfer Indonesia.", cat:"Style", fx:"fx-warm"},
+    {cmd:"indonesianhome", name:"Indonesian Home", desc:"Rumah sederhana khas Indonesia.", cat:"Style", fx:"fx-rustic"},
+    {cmd:"warm", name:"Warm", desc:"Nuansa warna dan pencahayaan hangat.", cat:"Style", fx:"fx-warm"},
+    {cmd:"daylight", name:"Daylight", desc:"Pencahayaan siang natural.", cat:"Style", fx:"fx-natural"},
+    {cmd:"pastel", name:"Pastel", desc:"Palet warna pastel lembut.", cat:"Style", fx:"fx-minimal"},
+    {cmd:"monochrome", name:"Monochrome", desc:"Satu warna dominan/hitam-putih.", cat:"Style", fx:"fx-cinematic"},
+    {cmd:"vintage", name:"Vintage", desc:"Nuansa foto klasik/retro.", cat:"Style", fx:"fx-rustic"},
+    {cmd:"neon", name:"Neon", desc:"Pencahayaan warna neon mencolok.", cat:"Style", fx:"fx-hyperreal"},
+    {cmd:"luxury", name:"Luxury", desc:"Kesan mewah dan eksklusif.", cat:"Style", fx:"fx-premium"},
+
+    // Retention
+    {cmd:"scrollstop", name:"Scroll Stop", desc:"Visual awal yang langsung menarik perhatian.", cat:"Retention", fx:"fx-hyperreal"},
+    {cmd:"curiosity", name:"Curiosity", desc:"Membangun rasa ingin tahu.", cat:"Retention", fx:"fx-cinematic"},
+    {cmd:"patternbreak", name:"Pattern Break", desc:"Perubahan visual untuk mencegah kebosanan.", cat:"Retention", fx:"fx-cinematic"},
+    {cmd:"satisfying", name:"Satisfying", desc:"Aksi/tekstur yang enak dilihat.", cat:"Retention", fx:"fx-warm"},
+    {cmd:"beforeafter", name:"Before After", desc:"Perbandingan sebelum dan sesudah.", cat:"Retention", fx:"fx-natural"},
+    {cmd:"transformation", name:"Transformation", desc:"Perubahan visual yang jelas.", cat:"Retention", fx:"fx-premium"},
+    {cmd:"unexpected", name:"Unexpected", desc:"Elemen visual yang tidak terduga.", cat:"Retention", fx:"fx-hyperreal"},
+    {cmd:"contrastpop", name:"Contrast Pop", desc:"Kontras warna kuat untuk menarik mata.", cat:"Retention", fx:"fx-hyperreal"},
+    {cmd:"closeuphook", name:"Closeup Hook", desc:"Detail ekstrem sebagai pembuka, memancing rasa penasaran.", cat:"Retention", fx:"fx-cinematic"},
+
+    // Affiliate (item "affiliate" dikecualikan karena fungsinya khusus struktur video)
+    {cmd:"softsell", name:"Soft Sell", desc:"Promosi halus dan natural.", cat:"Affiliate", fx:"fx-natural"},
+    {cmd:"hardsell", name:"Hard Sell", desc:"Promosi langsung.", cat:"Affiliate", fx:"fx-premium"},
+    {cmd:"benefit", name:"Benefit", desc:"Menonjolkan manfaat produk.", cat:"Affiliate", fx:"fx-warm"},
+    {cmd:"proof", name:"Proof", desc:"Menampilkan bukti penggunaan/hasil.", cat:"Affiliate", fx:"fx-natural"},
+    {cmd:"cta", name:"CTA", desc:"Ajakan tindakan di bagian akhir.", cat:"Affiliate", fx:"fx-premium"},
+    {cmd:"productlaunch", name:"Product Launch", desc:"Menampilkan poster peluncuran produk baru.", cat:"Affiliate", fx:"fx-premium"},
+    {cmd:"comparison", name:"Comparison", desc:"Membandingkan dengan kompetitor/produk lain.", cat:"Affiliate", fx:"fx-natural"},
+    {cmd:"urgency", name:"Urgency", desc:"Kesan promo terbatas/mendesak.", cat:"Affiliate", fx:"fx-hyperreal"},
+    {cmd:"guarantee", name:"Guarantee", desc:"Menonjolkan garansi/jaminan produk.", cat:"Affiliate", fx:"fx-premium"},
+
+    // Food
+    {cmd:"food-commercial", name:"Food Commercial", desc:"Iklan makanan profesional.", cat:"Food", fx:"fx-cinematic"},
+    {cmd:"steamfood", name:"Steam Food", desc:"Uap makanan realistis.", cat:"Food", fx:"fx-warm"},
+    {cmd:"crispy", name:"Crispy", desc:"Menonjolkan kerenyahan.", cat:"Food", fx:"fx-premium"},
+    {cmd:"food-closeup", name:"Food Close-up", desc:"Close-up makanan menggugah selera.", cat:"Food", fx:"fx-natural"},
+    {cmd:"ingredientstory", name:"Ingredient Story", desc:"Produk + bahan utama sebagai visual storytelling.", cat:"Food", fx:"fx-rustic"},
+    {cmd:"bakery", name:"Bakery", desc:"Nuansa foto produk roti/kue.", cat:"Food", fx:"fx-warm"},
+    {cmd:"beverage", name:"Beverage", desc:"Gaya foto minuman dengan kondensasi/es.", cat:"Food", fx:"fx-natural"},
+    {cmd:"platingart", name:"Plating Art", desc:"Penataan hidangan ala restoran fine dining.", cat:"Food", fx:"fx-cinematic"},
+    {cmd:"freshness", name:"Freshness", desc:"Menonjolkan kesegaran bahan.", cat:"Food", fx:"fx-natural"}
+  ];
+  var BY_CMD = {};
+  SHORTCUTS.forEach(function(s){ BY_CMD[s.cmd] = s; });
+
+  var CAT_ICON = {
+    "Transformasi":"🔁",
+    "Foto":"📸",
+    "Style":"🎨",
+    "Retention":"👀",
+    "Affiliate":"📣",
+    "Food":"🍽️"
+  };
+
+  var EXAMPLES = [
+    {cmd:"outfittransfer", icon:"👕", exClass:"ex-after-outfittransfer"},
+    {cmd:"heroimage", icon:"✨", exClass:"ex-after-hero"},
+    {cmd:"ingredientstory", icon:"🌿", exClass:"ex-after-ingredientstory"},
+    {cmd:"flatlay", icon:"▦", exClass:"ex-after-flatlay"}
+  ];
+
+  var state = {
+    user:null,
+    imageMode:"single",
+    singleImage:null,
+    multiImages:[],
+    matched:null
+  };
+
+  function primaryImage(){ return state.imageMode === "single" ? state.singleImage : (state.multiImages[0] || null); }
+  function imageCount(){ return state.imageMode === "single" ? (state.singleImage ? 1 : 0) : state.multiImages.length; }
+  function secondImage(){ return state.imageMode === "multi" && state.multiImages.length > 1 ? state.multiImages[1] : null; }
+
+  // ============ LOGIN ============
+  var loginForm = document.getElementById("loginForm");
+  var loginError = document.getElementById("loginError");
+  loginForm.addEventListener("submit", function(e){
+    e.preventDefault();
+    var u = document.getElementById("username").value.trim();
+    var p = document.getElementById("password").value.trim();
+    if(!u || !p){ loginError.style.display = "block"; return; }
+    loginError.style.display = "none";
+    state.user = u;
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("appScreen").style.display = "block";
+    document.getElementById("whoLabel").textContent = "Masuk sebagai " + u;
+  });
+  document.getElementById("logoutBtn").addEventListener("click", function(){
+    document.getElementById("appScreen").style.display = "none";
+    document.getElementById("loginScreen").style.display = "flex";
+    document.getElementById("username").value = "";
+    document.getElementById("password").value = "";
+  });
+
+  // ============ Category list ============
+  var categoryList = document.getElementById("categoryList");
+  CATEGORY_ORDER.forEach(function(cat){
+    var items = SHORTCUTS.filter(function(s){ return s.cat === cat; });
+    var h3 = document.createElement("h3");
+    h3.className = "cat-title";
+    h3.textContent = cat;
+    categoryList.appendChild(h3);
+    var grid = document.createElement("div");
+    grid.className = "populer-grid";
+    items.forEach(function(s){
+      var cell = document.createElement("div");
+      cell.className = "populer-cell";
+      cell.innerHTML =
+        '<div class="p-swatch swatch-' + s.fx + '">' + CAT_ICON[s.cat] + '</div>' +
+        '<div><div class="p-name">' + s.name + '</div><div class="p-desc">' + s.desc + '</div></div>';
+      cell.addEventListener("click", function(){ setCommand(s.cmd); });
+      grid.appendChild(cell);
+    });
+    categoryList.appendChild(grid);
+  });
+
+  // ============ Command input ============
+  var commandInput = document.getElementById("commandInput");
+  var statusBox = document.getElementById("statusBox");
+
+  function setCommand(cmd){
+    commandInput.value = cmd;
+    evaluateCommand();
+    commandInput.focus();
+  }
+
+  function evaluateCommand(){
+    var raw = commandInput.value.trim().toLowerCase();
+    var match = BY_CMD[raw] || null;
+    state.matched = match;
+    if(!raw || !match){
+      statusBox.className = "status-box";
+      statusBox.textContent = "Shortcut belum terdaftar.";
+    } else if(match.needsMulti && imageCount() < 2){
+      statusBox.className = "status-box recognized";
+      statusBox.innerHTML = '<span class="s-name">' + match.name + '</span><span class="s-desc">' + match.desc + '</span><span class="s-warn">Perlu minimal 2 foto (mode Banyak Gambar) untuk shortcut ini.</span>';
+    } else {
+      statusBox.className = "status-box recognized";
+      statusBox.innerHTML = '<span class="s-name">' + match.name + '</span><span class="s-desc">' + match.desc + '</span>';
+    }
+    updateGenerateState();
+  }
+  commandInput.addEventListener("input", evaluateCommand);
+
+  // ============ Image mode toggle ============
+  var imageModeToggle = document.getElementById("imageModeToggle");
+  var singleWrap = document.getElementById("singleWrap");
+  var multiWrap = document.getElementById("multiWrap");
+  imageModeToggle.addEventListener("click", function(e){
+    var btn = e.target.closest("button");
+    if(!btn) return;
+    state.imageMode = btn.dataset.imgmode;
+    Array.prototype.forEach.call(imageModeToggle.querySelectorAll("button"), function(b){ b.classList.toggle("active", b === btn); });
+    singleWrap.style.display = state.imageMode === "single" ? "block" : "none";
+    multiWrap.style.display = state.imageMode === "multi" ? "block" : "none";
+    evaluateCommand();
+  });
+
+  // ---- Single upload ----
+  var uploadBoxSingle = document.getElementById("uploadBoxSingle");
+  function setupSingleUpload(){
+    var box = document.getElementById("uploadBoxSingle");
+    var input = document.getElementById("fileInputSingle");
+    input.addEventListener("change", function(e){
+      var file = e.target.files && e.target.files[0];
+      if(file) readSingleFile(file);
+    });
+    ["dragover","dragenter"].forEach(function(evt){ box.addEventListener(evt, function(e){ e.preventDefault(); box.classList.add("drag"); }); });
+    ["dragleave","drop"].forEach(function(evt){ box.addEventListener(evt, function(e){ e.preventDefault(); box.classList.remove("drag"); }); });
+    box.addEventListener("drop", function(e){
+      var file = e.dataTransfer.files && e.dataTransfer.files[0];
+      if(file) readSingleFile(file);
+    });
+    box.addEventListener("click", function(e){
+      var rm = e.target.closest(".remove-btn");
+      if(rm){ e.preventDefault(); e.stopPropagation(); resetSingle(); }
+    });
+  }
+  function readSingleFile(file){
+    if(!file.type.startsWith("image/")) return;
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      state.singleImage = ev.target.result;
+      var box = document.getElementById("uploadBoxSingle");
+      box.classList.add("filled");
+      box.innerHTML = '<img src="' + ev.target.result + '" alt="Foto"><button type="button" class="remove-btn">×</button><div class="file-label">' + file.name + '</div>';
+      evaluateCommand();
+    };
+    reader.readAsDataURL(file);
+  }
+  function resetSingle(){
+    state.singleImage = null;
+    var box = document.getElementById("uploadBoxSingle");
+    box.classList.remove("filled");
+    box.innerHTML = '<input type="file" id="fileInputSingle" accept="image/*"><div class="up-title">+ Upload Foto</div><div class="up-sub">Model / produk / scene</div>';
+    setupSingleUpload();
+    evaluateCommand();
+  }
+  setupSingleUpload();
+
+  // ---- Multi upload ----
+  var multiDropzone = document.getElementById("multiDropzone");
+  var multiThumbs = document.getElementById("multiThumbs");
+  function setupMultiUpload(){
+    var zone = document.getElementById("multiDropzone");
+    var input = document.getElementById("fileInputMulti");
+    input.addEventListener("change", function(e){
+      var files = e.target.files;
+      if(files) addMultiFiles(files);
+    });
+    ["dragover","dragenter"].forEach(function(evt){ zone.addEventListener(evt, function(e){ e.preventDefault(); zone.classList.add("drag"); }); });
+    ["dragleave","drop"].forEach(function(evt){ zone.addEventListener(evt, function(e){ e.preventDefault(); zone.classList.remove("drag"); }); });
+    zone.addEventListener("drop", function(e){
+      var files = e.dataTransfer.files;
+      if(files) addMultiFiles(files);
+    });
+  }
+  function addMultiFiles(fileList){
+    Array.prototype.forEach.call(fileList, function(file){
+      if(!file.type.startsWith("image/")) return;
+      var reader = new FileReader();
+      reader.onload = function(ev){
+        state.multiImages.push(ev.target.result);
+        renderMultiThumbs();
+        evaluateCommand();
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  function renderMultiThumbs(){
+    multiThumbs.innerHTML = "";
+    state.multiImages.forEach(function(src, idx){
+      var t = document.createElement("div");
+      t.className = "multi-thumb";
+      t.innerHTML = '<img src="' + src + '" alt="Foto ' + (idx+1) + '"><span class="idx-tag">Foto ' + (idx+1) + '</span><button type="button" class="remove-btn" data-idx="' + idx + '">×</button>';
+      multiThumbs.appendChild(t);
+    });
+  }
+  multiThumbs.addEventListener("click", function(e){
+    var btn = e.target.closest(".remove-btn");
+    if(!btn) return;
+    var idx = parseInt(btn.dataset.idx, 10);
+    state.multiImages.splice(idx, 1);
+    renderMultiThumbs();
+    evaluateCommand();
+  });
+  setupMultiUpload();
+
+  // ============ Generate ============
+  var generateBtn = document.getElementById("generateBtn");
+  var generateLabel = document.getElementById("generateLabel");
+  var spinner = document.getElementById("spinner");
+  var resultBox = document.getElementById("resultBox");
+
+  function updateGenerateState(){
+    var match = state.matched;
+    var ok = match && imageCount() >= 1 && !(match.needsMulti && imageCount() < 2);
+    generateBtn.disabled = !ok;
+  }
+
+  generateBtn.addEventListener("click", function(){
+    if(generateBtn.disabled) return;
+    var match = state.matched;
+    var img1 = primaryImage();
+    var img2 = secondImage();
+    generateBtn.disabled = true;
+    spinner.style.display = "inline-block";
+    generateLabel.textContent = "Memproses...";
+
+    var prompt = 'Edit foto produk berikut sesuai instruksi ini: "' + match.desc +
+      '". Hasil harus realistis, berkualitas tinggi, dan produk utama harus tetap dikenali seperti aslinya.';
+
+    fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: prompt, image1: img1, image2: img2 || null })
+    })
+      .then(function(r){
+        return r.json().then(function(data){ return { ok: r.ok, data: data }; });
+      })
+      .then(function(res){
+        if(!res.ok){
+          resultBox.innerHTML = '<div style="padding:20px; color:var(--danger); font-size:13px; text-align:center;">Gagal generate: ' + (res.data && res.data.error ? res.data.error : "Terjadi kesalahan.") + '</div>';
+          return;
+        }
+        resultBox.innerHTML =
+          '<img src="' + res.data.image + '" alt="Hasil">' +
+          (img2 ? '<div class="result-ref-badge"><img src="' + img2 + '" alt="Foto referensi"></div>' : '') +
+          '<div class="result-caption"><div class="r-name">' + match.name + '</div><div class="r-desc">' + match.desc + '</div></div>';
+      })
+      .catch(function(err){
+        resultBox.innerHTML = '<div style="padding:20px; color:var(--danger); font-size:13px; text-align:center;">Gagal terhubung ke server: ' + err.message + '</div>';
+      })
+      .finally(function(){
+        generateBtn.disabled = false;
+        spinner.style.display = "none";
+        generateLabel.textContent = "+ Generate";
+      });
+  });
+
+  // ============ Example results (illustrative, static) ============
+  var examplesGrid = document.getElementById("examplesGrid");
+  EXAMPLES.forEach(function(ex){
+    var s = BY_CMD[ex.cmd];
+    var card = document.createElement("div");
+    card.className = "example-card";
+    card.innerHTML =
+      '<div class="example-compare">' +
+        '<div class="example-box before"><span class="ico">📷</span><span>Sebelum</span></div>' +
+        '<div class="example-arrow">→</div>' +
+        '<div class="example-box ' + ex.exClass + '"><span class="ico">' + ex.icon + '</span><span>Sesudah</span></div>' +
+      '</div>' +
+      '<div class="example-label">' + s.name + '</div>' +
+      '<div class="example-desc">' + s.desc + '</div>';
+    examplesGrid.appendChild(card);
+  });
+
+  evaluateCommand();
+})();
+</script>
+</body>
+</html>

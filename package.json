@@ -1,0 +1,6 @@
+{
+  "name": "jepret-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Jepret - generator foto produk berbasis shortcut, tersambung ke Gemini image generation API."
+}
